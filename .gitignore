@@ -1,0 +1,23 @@
+﻿# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+frontend/dist/
+**/dist/
+.vite/
+**/.vite/
+coverage/
+**/coverage/
+
+# Environment
+.env
+.env.*
+!.env*.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# System
+.DS_Store

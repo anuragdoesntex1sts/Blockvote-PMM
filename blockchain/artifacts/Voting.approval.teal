@@ -1,0 +1,726 @@
+#pragma version 11
+#pragma typetrack false
+
+// @algorandfoundation/algorand-typescript/arc4/index.d.ts::Contract.approvalProgram() -> uint64:
+main:
+    intcblock 0 1 2 32
+    bytecblock "started" "ended" "count" "v" "c" 0x00 "admin" 0x151f7c75
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // src/voting.algo.ts:21
+    // admin = GlobalState<Account>({ key: 'admin' })
+    bytec 6 // "admin"
+    // src/voting.algo.ts:31
+    // this.admin.value = Txn.sender
+    txn Sender
+    app_global_put
+    // src/voting.algo.ts:22
+    // electionStarted = GlobalState<boolean>({ key: 'started' })
+    bytec_0 // "started"
+    // src/voting.algo.ts:34
+    // this.electionStarted.value = false
+    intc_0 // 0
+    app_global_put
+    // src/voting.algo.ts:23
+    // electionEnded = GlobalState<boolean>({ key: 'ended' })
+    bytec_1 // "ended"
+    // src/voting.algo.ts:35
+    // this.electionEnded.value = false
+    intc_0 // 0
+    app_global_put
+    // src/voting.algo.ts:24
+    // candidateCount = GlobalState<uint64>({ key: 'count' })
+    bytec_2 // "count"
+    // src/voting.algo.ts:36
+    // this.candidateCount.value = 0
+    intc_0 // 0
+    app_global_put
+
+main_after_if_else@2:
+    // src/voting.algo.ts:20
+    // export class Voting extends Contract {
+    txn NumAppArgs
+    bz main___algots__.defaultCreate@16
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0xf6a5604c 0x83811f91 0x90867817 0x31d5c300 0x3feaad0c 0x0d0b1b9d 0xba72f74a // method "initialize(string[])void", method "registerVoter(address)void", method "startElection()void", method "vote(uint64)void", method "endElection()void", method "getCandidates()(string,uint64)[]", method "getVoterStatus(address)(bool,bool)"
+    txna ApplicationArgs 0
+    match initialize registerVoter startElection vote endElection getCandidates getVoterStatus
+    err
+
+main___algots__.defaultCreate@16:
+    // src/voting.algo.ts:20
+    // export class Voting extends Contract {
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// src/voting.algo.ts::Voting.initialize[routing]() -> void:
+initialize:
+    // src/voting.algo.ts:40
+    // public initialize(names: string[]): void {
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    dup
+    cover 2
+    intc_2 // 2
+    *
+    swap
+    dup
+    len
+    cover 2
+    extract 2 0
+    intc_0 // 0
+
+initialize_for_header@1:
+    // src/voting.algo.ts:40
+    // public initialize(names: string[]): void {
+    dup
+    dig 5
+    <
+    bz initialize_after_for@4
+    dup
+    intc_2 // 2
+    *
+    dig 2
+    dup
+    uncover 2
+    extract_uint16 // on error: invalid array encoding
+    dup
+    uncover 5
+    dup
+    cover 4
+    ==
+    assert // invalid tail pointer for (len+(len+utf8[])[])
+    dig 1
+    len
+    substring3
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    +
+    cover 2
+    intc_1 // 1
+    +
+    b initialize_for_header@1
+
+initialize_after_for@4:
+    pop
+    // src/voting.algo.ts:40
+    // public initialize(names: string[]): void {
+    swap
+    intc_2 // 2
+    +
+    uncover 2
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<string>
+    // src/voting.algo.ts:41
+    // this.onlyAdmin()
+    callsub onlyAdmin
+    // src/voting.algo.ts:42
+    // assert(this.candidateCount.value === 0, 'Already initialized')
+    intc_0 // 0
+    // src/voting.algo.ts:24
+    // candidateCount = GlobalState<uint64>({ key: 'count' })
+    bytec_2 // "count"
+    // src/voting.algo.ts:42
+    // assert(this.candidateCount.value === 0, 'Already initialized')
+    app_global_get_ex
+    assert // check GlobalState exists
+    !
+    assert // Already initialized
+    // src/voting.algo.ts:43
+    // assert(names.length >= 2, 'Need at least two candidates')
+    dig 1
+    intc_2 // 2
+    >=
+    assert // Need at least two candidates
+    // src/voting.algo.ts:45
+    // for (let i: uint64 = 0; i < names.length; i += 1) {
+    intc_0 // 0
+
+initialize_while_top@6:
+    // src/voting.algo.ts:45
+    // for (let i: uint64 = 0; i < names.length; i += 1) {
+    dup
+    dig 3
+    <
+    dup
+    bz initialize_after_while@8
+    assert // index out of bounds
+    dup
+    intc_2 // 2
+    *
+    dig 2
+    dup
+    uncover 2
+    extract_uint16
+    dup2
+    extract_uint16
+    intc_2 // 2
+    +
+    extract3
+    // src/voting.algo.ts:46
+    // assert(names[i] !== '', 'Empty candidate name')
+    extract 2 0
+    dup
+    pushbytes ""
+    !=
+    assert // Empty candidate name
+    // src/voting.algo.ts:47
+    // this.candidates(i).value = { name: names[i], votes: 0 }
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    pushbytes 0x000a0000000000000000
+    swap
+    concat
+    dig 1
+    itob
+    // src/voting.algo.ts:26
+    // candidates = BoxMap<uint64, Candidate>({ keyPrefix: 'c' })
+    bytec 4 // "c"
+    swap
+    concat
+    // src/voting.algo.ts:47
+    // this.candidates(i).value = { name: names[i], votes: 0 }
+    dup
+    box_del
+    pop
+    swap
+    box_put
+    // src/voting.algo.ts:45
+    // for (let i: uint64 = 0; i < names.length; i += 1) {
+    intc_1 // 1
+    +
+    b initialize_while_top@6
+
+initialize_after_while@8:
+    popn 3
+    // src/voting.algo.ts:24
+    // candidateCount = GlobalState<uint64>({ key: 'count' })
+    bytec_2 // "count"
+    // src/voting.algo.ts:49
+    // this.candidateCount.value = names.length
+    swap
+    app_global_put
+    // src/voting.algo.ts:40
+    // public initialize(names: string[]): void {
+    intc_1 // 1
+    return
+
+
+// src/voting.algo.ts::Voting.registerVoter[routing]() -> void:
+registerVoter:
+    // src/voting.algo.ts:52
+    // public registerVoter(voter: Account): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // src/voting.algo.ts:53
+    // this.onlyAdmin()
+    callsub onlyAdmin
+    // src/voting.algo.ts:54
+    // assert(!this.electionStarted.value, 'Election already started')
+    intc_0 // 0
+    // src/voting.algo.ts:22
+    // electionStarted = GlobalState<boolean>({ key: 'started' })
+    bytec_0 // "started"
+    // src/voting.algo.ts:54
+    // assert(!this.electionStarted.value, 'Election already started')
+    app_global_get_ex
+    assert // check GlobalState exists
+    !
+    assert // Election already started
+    // src/voting.algo.ts:27
+    // voters = BoxMap<Account, VoterStatus>({ keyPrefix: 'v' })
+    bytec_3 // "v"
+    swap
+    concat
+    // src/voting.algo.ts:96
+    // return this.voters(voter).get({ default: { registered: false, voted: false } })
+    dup
+    box_get
+    bytec 5 // 0x00
+    cover 2
+    select
+    // src/voting.algo.ts:57
+    // assert(!status.registered, 'Already registered')
+    dup
+    intc_0 // 0
+    getbit
+    !
+    assert // Already registered
+    // src/voting.algo.ts:59
+    // this.voters(voter).value = { registered: true, voted: status.voted }
+    intc_1 // 1
+    getbit
+    pushbytes 0x80
+    intc_1 // 1
+    uncover 2
+    setbit
+    box_put
+    // src/voting.algo.ts:52
+    // public registerVoter(voter: Account): void {
+    intc_1 // 1
+    return
+
+
+// src/voting.algo.ts::Voting.startElection[routing]() -> void:
+startElection:
+    // src/voting.algo.ts:63
+    // this.onlyAdmin()
+    callsub onlyAdmin
+    // src/voting.algo.ts:64
+    // assert(!this.electionStarted.value && !this.electionEnded.value, 'Cannot start')
+    intc_0 // 0
+    // src/voting.algo.ts:22
+    // electionStarted = GlobalState<boolean>({ key: 'started' })
+    bytec_0 // "started"
+    // src/voting.algo.ts:64
+    // assert(!this.electionStarted.value && !this.electionEnded.value, 'Cannot start')
+    app_global_get_ex
+    assert // check GlobalState exists
+    bnz startElection_bool_false@4
+    intc_0 // 0
+    // src/voting.algo.ts:23
+    // electionEnded = GlobalState<boolean>({ key: 'ended' })
+    bytec_1 // "ended"
+    // src/voting.algo.ts:64
+    // assert(!this.electionStarted.value && !this.electionEnded.value, 'Cannot start')
+    app_global_get_ex
+    assert // check GlobalState exists
+    bnz startElection_bool_false@4
+    intc_1 // 1
+
+startElection_bool_merge@5:
+    // src/voting.algo.ts:64
+    // assert(!this.electionStarted.value && !this.electionEnded.value, 'Cannot start')
+    assert // Cannot start
+    // src/voting.algo.ts:22
+    // electionStarted = GlobalState<boolean>({ key: 'started' })
+    bytec_0 // "started"
+    // src/voting.algo.ts:65
+    // this.electionStarted.value = true
+    intc_1 // 1
+    app_global_put
+    // src/voting.algo.ts:62
+    // public startElection(): void {
+    intc_1 // 1
+    return
+
+startElection_bool_false@4:
+    intc_0 // 0
+    b startElection_bool_merge@5
+
+
+// src/voting.algo.ts::Voting.vote[routing]() -> void:
+vote:
+    // src/voting.algo.ts:68
+    // public vote(candidateId: uint64): void {
+    txna ApplicationArgs 1
+    dup
+    len
+    pushint 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // src/voting.algo.ts:69
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Election not open')
+    intc_0 // 0
+    // src/voting.algo.ts:22
+    // electionStarted = GlobalState<boolean>({ key: 'started' })
+    bytec_0 // "started"
+    // src/voting.algo.ts:69
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Election not open')
+    app_global_get_ex
+    assert // check GlobalState exists
+    bz vote_bool_false@4
+    intc_0 // 0
+    // src/voting.algo.ts:23
+    // electionEnded = GlobalState<boolean>({ key: 'ended' })
+    bytec_1 // "ended"
+    // src/voting.algo.ts:69
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Election not open')
+    app_global_get_ex
+    assert // check GlobalState exists
+    bnz vote_bool_false@4
+    intc_1 // 1
+
+vote_bool_merge@5:
+    // src/voting.algo.ts:69
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Election not open')
+    assert // Election not open
+    // src/voting.algo.ts:27
+    // voters = BoxMap<Account, VoterStatus>({ keyPrefix: 'v' })
+    bytec_3 // "v"
+    // src/voting.algo.ts:71
+    // const status = this.getVoterStatus(Txn.sender)
+    txn Sender
+    // src/voting.algo.ts:27
+    // voters = BoxMap<Account, VoterStatus>({ keyPrefix: 'v' })
+    concat
+    // src/voting.algo.ts:96
+    // return this.voters(voter).get({ default: { registered: false, voted: false } })
+    box_get
+    bytec 5 // 0x00
+    cover 2
+    select
+    // src/voting.algo.ts:72
+    // assert(status.registered, 'Wallet not registered')
+    dup
+    intc_0 // 0
+    getbit
+    assert // Wallet not registered
+    // src/voting.algo.ts:73
+    // assert(!status.voted, 'Already voted')
+    intc_1 // 1
+    getbit
+    !
+    assert // Already voted
+    // src/voting.algo.ts:74
+    // assert(candidateId < this.candidateCount.value, 'Invalid candidate')
+    intc_0 // 0
+    // src/voting.algo.ts:24
+    // candidateCount = GlobalState<uint64>({ key: 'count' })
+    bytec_2 // "count"
+    // src/voting.algo.ts:74
+    // assert(candidateId < this.candidateCount.value, 'Invalid candidate')
+    app_global_get_ex
+    assert // check GlobalState exists
+    dig 1
+    >
+    assert // Invalid candidate
+    // src/voting.algo.ts:76
+    // const candidate = clone(this.candidates(candidateId).value)
+    itob
+    // src/voting.algo.ts:26
+    // candidates = BoxMap<uint64, Candidate>({ keyPrefix: 'c' })
+    bytec 4 // "c"
+    swap
+    concat
+    // src/voting.algo.ts:76-77
+    // const candidate = clone(this.candidates(candidateId).value)
+    // this.candidates(candidateId).value = { name: candidate.name, votes: candidate.votes + 1 }
+    dup
+    pushint 10
+    intc_2 // 2
+    box_extract
+    btoi
+    intc_2 // 2
+    +
+    dig 1
+    pushint 10
+    uncover 2
+    box_extract
+    // src/voting.algo.ts:77
+    // this.candidates(candidateId).value = { name: candidate.name, votes: candidate.votes + 1 }
+    extract 2 0
+    // src/voting.algo.ts:76-77
+    // const candidate = clone(this.candidates(candidateId).value)
+    // this.candidates(candidateId).value = { name: candidate.name, votes: candidate.votes + 1 }
+    dig 1
+    intc_2 // 2
+    pushint 8
+    box_extract // on error: index out of bounds
+    // src/voting.algo.ts:77
+    // this.candidates(candidateId).value = { name: candidate.name, votes: candidate.votes + 1 }
+    btoi
+    intc_1 // 1
+    +
+    dig 1
+    len
+    itob
+    extract 6 2
+    uncover 2
+    concat
+    swap
+    itob
+    pushbytes 0x000a
+    swap
+    concat
+    swap
+    concat
+    dig 1
+    box_del
+    pop
+    box_put
+    // src/voting.algo.ts:27
+    // voters = BoxMap<Account, VoterStatus>({ keyPrefix: 'v' })
+    bytec_3 // "v"
+    // src/voting.algo.ts:78
+    // this.voters(Txn.sender).value = { registered: true, voted: true }
+    txn Sender
+    // src/voting.algo.ts:27
+    // voters = BoxMap<Account, VoterStatus>({ keyPrefix: 'v' })
+    concat
+    // src/voting.algo.ts:78
+    // this.voters(Txn.sender).value = { registered: true, voted: true }
+    pushbytes 0xc0
+    box_put
+    // src/voting.algo.ts:68
+    // public vote(candidateId: uint64): void {
+    intc_1 // 1
+    return
+
+vote_bool_false@4:
+    intc_0 // 0
+    b vote_bool_merge@5
+
+
+// src/voting.algo.ts::Voting.endElection[routing]() -> void:
+endElection:
+    // src/voting.algo.ts:82
+    // this.onlyAdmin()
+    callsub onlyAdmin
+    // src/voting.algo.ts:83
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Cannot end')
+    intc_0 // 0
+    // src/voting.algo.ts:22
+    // electionStarted = GlobalState<boolean>({ key: 'started' })
+    bytec_0 // "started"
+    // src/voting.algo.ts:83
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Cannot end')
+    app_global_get_ex
+    assert // check GlobalState exists
+    bz endElection_bool_false@4
+    intc_0 // 0
+    // src/voting.algo.ts:23
+    // electionEnded = GlobalState<boolean>({ key: 'ended' })
+    bytec_1 // "ended"
+    // src/voting.algo.ts:83
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Cannot end')
+    app_global_get_ex
+    assert // check GlobalState exists
+    bnz endElection_bool_false@4
+    intc_1 // 1
+
+endElection_bool_merge@5:
+    // src/voting.algo.ts:83
+    // assert(this.electionStarted.value && !this.electionEnded.value, 'Cannot end')
+    assert // Cannot end
+    // src/voting.algo.ts:23
+    // electionEnded = GlobalState<boolean>({ key: 'ended' })
+    bytec_1 // "ended"
+    // src/voting.algo.ts:84
+    // this.electionEnded.value = true
+    intc_1 // 1
+    app_global_put
+    // src/voting.algo.ts:81
+    // public endElection(): void {
+    intc_1 // 1
+    return
+
+endElection_bool_false@4:
+    intc_0 // 0
+    b endElection_bool_merge@5
+
+
+// src/voting.algo.ts::Voting.getCandidates[routing]() -> void:
+getCandidates:
+    // src/voting.algo.ts:88
+    // const result: Candidate[] = []
+    pushbytess "" 0x0000
+    // src/voting.algo.ts:89
+    // for (let i: uint64 = 0; i < this.candidateCount.value; i += 1) {
+    intc_0 // 0
+
+getCandidates_while_top@2:
+    // src/voting.algo.ts:89
+    // for (let i: uint64 = 0; i < this.candidateCount.value; i += 1) {
+    intc_0 // 0
+    // src/voting.algo.ts:24
+    // candidateCount = GlobalState<uint64>({ key: 'count' })
+    bytec_2 // "count"
+    // src/voting.algo.ts:89
+    // for (let i: uint64 = 0; i < this.candidateCount.value; i += 1) {
+    app_global_get_ex
+    assert // check GlobalState exists
+    dig 1
+    >
+    bz getCandidates_after_while@4
+    // src/voting.algo.ts:90
+    // result.push(this.candidates(i).value)
+    dup
+    itob
+    // src/voting.algo.ts:26
+    // candidates = BoxMap<uint64, Candidate>({ keyPrefix: 'c' })
+    bytec 4 // "c"
+    swap
+    concat
+    // src/voting.algo.ts:90
+    // result.push(this.candidates(i).value)
+    box_get
+    assert // Box must have value
+    pushbytes 0x0002
+    swap
+    concat
+    cover 2
+    swap
+    dup
+    intc_0 // 0
+    extract_uint16
+    dup
+    // src/voting.algo.ts:90
+    // result.push(this.candidates(i).value)
+    intc_1 // 1
+    +
+    itob
+    extract 6 0
+    uncover 2
+    extract 2 0
+    cover 2
+    swap
+    intc_2 // 2
+    *
+    cover 3
+    intc_0 // 0
+    swap
+    cover 4
+    bury 6
+
+getCandidates_for_header@6:
+    dig 5
+    dig 3
+    <
+    bz getCandidates_after_for@8
+    dup
+    dig 6
+    dup
+    cover 2
+    extract_uint16
+    intc_2 // 2
+    +
+    itob
+    extract 6 0
+    uncover 5
+    swap
+    concat
+    cover 4
+    intc_2 // 2
+    +
+    bury 6
+    b getCandidates_for_header@6
+
+getCandidates_after_for@8:
+    dup
+    len
+    cover 4
+    intc_0 // 0
+    bury 7
+
+getCandidates_for_header@9:
+    dig 6
+    intc_2 // 2
+    <
+    bz getCandidates_after_for@11
+    dig 5
+    dig 7
+    dup
+    cover 2
+    extract_uint16
+    dig 6
+    +
+    itob
+    extract 6 0
+    uncover 5
+    swap
+    concat
+    cover 4
+    intc_2 // 2
+    +
+    bury 7
+    b getCandidates_for_header@9
+
+getCandidates_after_for@11:
+    uncover 2
+    uncover 4
+    substring3
+    uncover 2
+    swap
+    concat
+    uncover 2
+    extract 2 0
+    concat
+    swap
+    // src/voting.algo.ts:89
+    // for (let i: uint64 = 0; i < this.candidateCount.value; i += 1) {
+    intc_1 // 1
+    +
+    b getCandidates_while_top@2
+
+getCandidates_after_while@4:
+    pop
+    // src/voting.algo.ts:87
+    // public getCandidates(): Candidate[] {
+    bytec 7 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// src/voting.algo.ts::Voting.getVoterStatus[routing]() -> void:
+getVoterStatus:
+    // src/voting.algo.ts:95
+    // public getVoterStatus(voter: Account): VoterStatus {
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // src/voting.algo.ts:27
+    // voters = BoxMap<Account, VoterStatus>({ keyPrefix: 'v' })
+    bytec_3 // "v"
+    swap
+    concat
+    // src/voting.algo.ts:96
+    // return this.voters(voter).get({ default: { registered: false, voted: false } })
+    box_get
+    bytec 5 // 0x00
+    cover 2
+    select
+    // src/voting.algo.ts:95
+    // public getVoterStatus(voter: Account): VoterStatus {
+    bytec 7 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// src/voting.algo.ts::Voting.onlyAdmin() -> void:
+onlyAdmin:
+    // src/voting.algo.ts:100
+    // assert(Txn.sender === this.admin.value, 'Only admin')
+    txn Sender
+    intc_0 // 0
+    // src/voting.algo.ts:21
+    // admin = GlobalState<Account>({ key: 'admin' })
+    bytec 6 // "admin"
+    // src/voting.algo.ts:100
+    // assert(Txn.sender === this.admin.value, 'Only admin')
+    app_global_get_ex
+    assert // check GlobalState exists
+    ==
+    assert // Only admin
+    retsub
