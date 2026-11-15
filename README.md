@@ -216,6 +216,7 @@ This is a learning-first prototype and not a production-grade election system.
 ## License
 
 This project is intended for educational and demo purposes. Update the license if you plan to distribute it publicly.
+Built by Anurag Naskar , Saumya Biswas , Swastik Nayak , Soumyadip Satpati
 
 ## Quick command reference
 
