@@ -176,6 +176,22 @@ npm run build
 
 The output bundles will be cleanly emitted to `frontend/dist/` with separate HTML and JS assets for `index.html`, `deploy.html`, and `vote.html`.
 
+### 4. Deploying to Render (Free Static Site)
+
+BlockVote is a client-side Web3 dApp interacting directly with Algorand Testnet. Deploy it as a **Render Static Site** (100% free, zero cold-start delay, automated SSL):
+
+1. Go to [render.com](https://render.com) and click **New +** → **Static Site**.
+2. Connect your GitHub repository (`anuragdoesntex1sts/Blockvote-PMM`).
+3. Fill in the build settings:
+   - **Name:** `blockvote`
+   - **Branch:** `main`
+   - **Root Directory:** `frontend`
+   - **Build Command:** `npm install && npm run build`
+   - **Publish Directory:** `dist`
+4. Click **Create Static Site**.
+
+*(Optional)* Render will also automatically detect the included [`render.yaml`](render.yaml) blueprint if you use **Blueprints** → **New Blueprint Instance**.
+
 ---
 
 ## Election Workflow Walkthrough
