@@ -361,12 +361,24 @@ export default function App() {
   return (
     <div className="wrap">
       <nav>
-        <div className="logo"><span>A</span> BlockVote</div>
+        <div className="logo" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span>A</span> BlockVote
+          <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px", background: "#ffffff15", color: "#a5a8b9", fontWeight: 600 }}>
+            ADMIN & ELECTION HUB
+          </span>
+        </div>
         <div className="nav-actions">
+          <a
+            href="/vote.html"
+            className="outline"
+            style={{ textDecoration: "none", padding: "7px 13px", borderRadius: "8px", color: "#79f2c3", borderColor: "#79f2c350", marginRight: "6px", fontWeight: 700 }}
+          >
+            🗳️ Voter Portal →
+          </a>
           <a
             href="/deploy.html"
             className="outline"
-            style={{ textDecoration: "none", padding: "8px 14px", borderRadius: "8px", color: "#c3b4ff", marginRight: "8px" }}
+            style={{ textDecoration: "none", padding: "7px 13px", borderRadius: "8px", color: "#c3b4ff", marginRight: "6px" }}
           >
             + Deploy New Election
           </a>
@@ -440,6 +452,46 @@ export default function App() {
           </a>
         </div>
       </header>
+
+      {/* ── Voter Portal Quick Navigation Banner ── */}
+      <div
+        className="notice"
+        style={{
+          borderColor: "#795be5",
+          background: "linear-gradient(135deg, #1c183a, #14172c)",
+          marginBottom: "20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "12px",
+          padding: "16px 20px",
+        }}
+      >
+        <div>
+          <b style={{ color: "#c4b6ff", fontSize: "14px" }}>🗳️ Looking for the Dedicated Voter Portal?</b>
+          <p style={{ margin: "4px 0 0 0", color: "#a5a8b9", fontSize: "13px" }}>
+            Voters can connect their registered Pera Wallet and cast ballots cleanly on the dedicated Voter Portal.
+          </p>
+        </div>
+        <a
+          href="/vote.html"
+          style={{
+            padding: "9px 18px",
+            background: "linear-gradient(110deg,#795be5,#6046d0)",
+            color: "white",
+            borderRadius: "8px",
+            textDecoration: "none",
+            fontWeight: 700,
+            fontSize: "13px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          Open Voter Portal →
+        </a>
+      </div>
 
       {/* ── App ID Bar ── */}
       <section className="panel" style={{ padding: "14px 20px", marginBottom: "20px", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
@@ -551,20 +603,41 @@ export default function App() {
                   {!account
                     ? "Connect wallet to vote"
                     : ended
-                    ? "Election closed"
-                    : !started
-                    ? "Election not started"
-                    : voted
-                    ? "Already voted ✓"
-                    : !registered
-                    ? (isAdmin ? "Register wallet below" : "Registration required")
-                    : "Cast vote"}
+                      ? "Election closed"
+                      : !started
+                        ? "Election not started"
+                        : voted
+                          ? "Already voted ✓"
+                          : !registered
+                            ? (isAdmin ? "Register wallet below" : "Registration required")
+                            : "Cast vote"}
                 </button>
               </article>
             );
           })
         )}
       </section>
+
+      {/* ── Voters Section ── */}
+      {!isAdmin && account && (
+        <section className="panel" style={{ marginTop: "20px", background: "linear-gradient(145deg,#1a2035,#14192a)", border: "1px solid #795be550" }}>
+          <div className="tag">VOTERS SECTION</div>
+          <h2>Voter Eligibility Check</h2>
+          <p style={{ fontSize: "13px", color: "#a5a8b9", marginBottom: "15px" }}>
+            {registered
+              ? started
+                ? !voted
+                  ? "You are registered and eligible to vote. Select a candidate above."
+                  : "You have already voted in this election."
+                : "You are registered! Please wait for the admin to open the election."
+              : "This wallet is not registered for this election. Please wait for the admin to register you."
+            }
+          </p>
+          {!registered && (
+            <p style={{ marginTop: "12px", color: "#e5c07b" }}>Not yet registered. Provide your address to the admin to be added as a voter.</p>
+          )}
+        </section>
+      )}
 
       {/* ── Lower Panels ── */}
       <section className="lower">
@@ -581,6 +654,14 @@ export default function App() {
                 <div><i style={{ width: `${total ? (c.votes / Math.max(...candidates.map((x) => x.votes), 1)) * 100 : 0}%` }} /></div>
               </div>
             ))
+          )}
+          {ended && (
+            <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #795be5" }}>
+              <b style={{ color: "#79f2c3" }}>🏆 Winner: {winner ? winner.name : "No votes cast"}</b>
+              {winner && (
+                <p style={{ margin: "8px 0" }}>Winning votes: <strong>{winner.votes}</strong> out of {total} total votes</p>
+              )}
+            </div>
           )}
         </div>
 
@@ -630,8 +711,8 @@ export default function App() {
             {ended
               ? "This election is permanently ended on Testnet. Start a new election using 'Deploy New Election' above."
               : started
-              ? "Election is OPEN! Registered voters can vote above. Voter registration is closed while the election is active."
-              : "Step 1: Register eligible voters below before starting. Step 2: Click 'Start election' to open voting."}
+                ? "Election is OPEN! Registered voters can vote above. Voter registration is closed while the election is active."
+                : "Step 1: Register eligible voters below before starting. Step 2: Click 'Start election' to open voting."}
           </p>
 
           {!ended && (
@@ -694,8 +775,8 @@ export default function App() {
               ? voted
                 ? "You have cast your vote in this election. Thank you for participating!"
                 : started
-                ? "You are registered! Select your preferred candidate above and click 'Cast vote'."
-                : "You are registered! Please wait for the admin to open the election."
+                  ? "You are registered! Select your preferred candidate above and click 'Cast vote'."
+                  : "You are registered! Please wait for the admin to open the election."
               : "This wallet is not yet registered for this election. Please provide your address to the election admin to be added."}
           </p>
         </section>

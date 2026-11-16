@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         main: "index.html",
         deploy: "deploy.html",
+        vote: "vote.html",
       },
     },
   },

@@ -20,6 +20,7 @@ describe('Voting contract', () => {
     const contract = ctx.contract.create(Voting)
 
     expect(() => contract.initialize(['Alice'])).toThrow(/Need at least two candidates/)
+    expect(() => contract.initialize([])).toThrow(/Empty candidates list/)
     expect(() => contract.initialize(['Alice', ''])).toThrow(/Empty candidate name/)
   })
 

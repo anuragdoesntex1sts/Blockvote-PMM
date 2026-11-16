@@ -40,6 +40,7 @@ export class Voting extends Contract {
   public initialize(names: string[]): void {
     this.onlyAdmin()
     assert(this.candidateCount.value === 0, 'Already initialized')
+    assert(names.length > 0, 'Empty candidates list')
     assert(names.length >= 2, 'Need at least two candidates')
 
     for (let i: uint64 = 0; i < names.length; i += 1) {

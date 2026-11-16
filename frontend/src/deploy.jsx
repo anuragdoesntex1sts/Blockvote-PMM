@@ -184,8 +184,11 @@ export default function Deploy() {
       <nav>
         <div className="logo"><span>A</span> BlockVote</div>
         <div className="nav-actions">
+          <a href="/vote.html" className="outline" style={{ textDecoration: "none", padding: "8px 14px", borderRadius: "8px", color: "#79f2c3", borderColor: "#79f2c340", marginRight: "8px", fontWeight: 600 }}>
+            🗳️ Voter Portal
+          </a>
           <a href="/" className="outline" style={{ textDecoration: "none", padding: "8px 14px", borderRadius: "8px", color: "#c3b4ff", marginRight: "8px" }}>
-            ← Back to Ballot
+            Admin Hub
           </a>
           <span className="network-tag">TESTNET</span>
           {account ? (
@@ -241,13 +244,13 @@ export default function Deploy() {
       {appId && appId !== "0" && (
         <div className="notice" style={{ borderColor: "#795be5", background: "#1c183a" }}>
           <b style={{ fontSize: "16px", color: "#a58aff" }}>✓ Deployed — Application #{appId}</b>
-          <p style={{ margin: "14px 0" }}>
+          <p style={{ margin: "14px 0", display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <a
-              href="/"
+              href={`/vote.html?appId=${appId}`}
               style={{
                 display: "inline-block",
                 padding: "12px 24px",
-                background: "linear-gradient(110deg,#9275fa,#6046d0)",
+                background: "linear-gradient(110deg,#795be5,#573ec9)",
                 color: "white",
                 borderRadius: "8px",
                 textDecoration: "none",
@@ -255,7 +258,23 @@ export default function Deploy() {
                 fontSize: "14px",
               }}
             >
-              Go to Election Ballot →
+              Open Voter Portal →
+            </a>
+            <a
+              href="/"
+              style={{
+                display: "inline-block",
+                padding: "12px 24px",
+                background: "#ffffff12",
+                color: "white",
+                borderRadius: "8px",
+                textDecoration: "none",
+                fontWeight: 700,
+                fontSize: "14px",
+                border: "1px solid #ffffff25",
+              }}
+            >
+              Admin Controls →
             </a>
           </p>
           <p>
