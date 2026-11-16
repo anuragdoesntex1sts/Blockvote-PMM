@@ -18,9 +18,25 @@ const algorand = AlgorandClient.fromEnvironment()
 // Accounts come from plain algosdk (stateless, explicit).
 // On localnet, use the default KMD dispenser account.
 // On testnet/mainnet, set DEPLOYER_MNEMONIC in your .env file.
-const deployer = process.env.DEPLOYER_MNEMONIC
-  ? algosdk.mnemonicToSecretKey(process.env.DEPLOYER_MNEMONIC)
-  : await getLocalNetDispenser(algorand.client.algod)
+const isLocal =
+  Boolean(
+    process.env.ALGOD_SERVER &&
+      (process.env.ALGOD_SERVER.includes('localhost') || process.env.ALGOD_SERVER.includes('127.0.0.1')),
+  ) || !process.env.ALGOD_SERVER
+
+let deployer: algosdk.Account
+if (process.env.DEPLOYER_MNEMONIC && process.env.DEPLOYER_MNEMONIC.trim().length > 0) {
+  deployer = algosdk.mnemonicToSecretKey(process.env.DEPLOYER_MNEMONIC.trim())
+} else if (isLocal) {
+  deployer = await getLocalNetDispenser(algorand.client.algod)
+} else {
+  console.error('\n❌ DEPLOYER_MNEMONIC is missing in your .env.testnet file.')
+  console.error('To deploy to Testnet via CLI:')
+  console.error('  1. Add the 25-word mnemonic of a funded Testnet wallet in blockchain/.env.testnet: DEPLOYER_MNEMONIC="word1 word2 ..."')
+  console.error('  OR')
+  console.error('  2. (Recommended) Deploy directly via Pera Wallet in your browser at http://localhost:5173/deploy.html without exposing your mnemonic.\n')
+  process.exit(1)
+}
 
 // The typed factory handles deployment: it uses the indexer to find an
 // existing deployment by creator + app name, making deploys idempotent.
