@@ -564,8 +564,8 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── Ballot ── */}
-      <div className="heading"><div className="tag">THE BALLOT</div><h2>Choose your candidate</h2></div>
+      {/* ── Candidate Standings ── */}
+      <div className="heading"><div className="tag">ELECTION CANDIDATES</div><h2>Candidate Standings</h2></div>
 
       <section className="cards">
         {candidates.length === 0 ? (
@@ -588,56 +588,24 @@ export default function App() {
           </div>
         ) : (
           candidates.map((c, i) => {
-            const canVote = Boolean(account && started && !ended && registered && !voted && !busy);
+            const pct = total > 0 ? ((c.votes / total) * 100).toFixed(1) : "0.0";
             return (
               <article className="panel candidate" key={c.id}>
                 <div className="avatar">{c.name[0]}</div>
                 <small>CANDIDATE 0{i + 1}</small>
                 <h3>{c.name}</h3>
                 <b>{c.votes} <small>vote{c.votes === 1 ? "" : "s"}</small></b>
-                <button
-                  disabled={!canVote}
-                  onClick={() => handleVote(c.id)}
-                  style={canVote ? { cursor: "pointer" } : undefined}
-                >
-                  {!account
-                    ? "Connect wallet to vote"
-                    : ended
-                      ? "Election closed"
-                      : !started
-                        ? "Election not started"
-                        : voted
-                          ? "Already voted ✓"
-                          : !registered
-                            ? (isAdmin ? "Register wallet below" : "Registration required")
-                            : "Cast vote"}
-                </button>
+                <div style={{ marginTop: "12px", width: "100%", background: "rgba(255,255,255,0.08)", borderRadius: "999px", height: "6px", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #7c5dfa, #a78bfa)", borderRadius: "999px" }} />
+                </div>
+                <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "6px", fontFamily: "DM Mono" }}>
+                  {pct}% of total votes
+                </span>
               </article>
             );
           })
         )}
       </section>
-
-      {/* ── Voters Section ── */}
-      {!isAdmin && account && (
-        <section className="panel" style={{ marginTop: "20px", background: "linear-gradient(145deg,#1a2035,#14192a)", border: "1px solid #795be550" }}>
-          <div className="tag">VOTERS SECTION</div>
-          <h2>Voter Eligibility Check</h2>
-          <p style={{ fontSize: "13px", color: "#a5a8b9", marginBottom: "15px" }}>
-            {registered
-              ? started
-                ? !voted
-                  ? "You are registered and eligible to vote. Select a candidate above."
-                  : "You have already voted in this election."
-                : "You are registered! Please wait for the admin to open the election."
-              : "This wallet is not registered for this election. Please wait for the admin to register you."
-            }
-          </p>
-          {!registered && (
-            <p style={{ marginTop: "12px", color: "#e5c07b" }}>Not yet registered. Provide your address to the admin to be added as a voter.</p>
-          )}
-        </section>
-      )}
 
       {/* ── Lower Panels ── */}
       <section className="lower">
@@ -763,22 +731,6 @@ export default function App() {
               {ended ? "Election closed" : "End election"}
             </button>
           </div>
-        </section>
-      )}
-
-      {/* ── Voter Instructions Card (Visible to everyone) ── */}
-      {!isAdmin && account && (
-        <section className="notice" style={{ marginTop: "20px" }}>
-          <b>Voter Mode Active</b>
-          <p style={{ marginTop: "4px" }}>
-            {registered
-              ? voted
-                ? "You have cast your vote in this election. Thank you for participating!"
-                : started
-                  ? "You are registered! Select your preferred candidate above and click 'Cast vote'."
-                  : "You are registered! Please wait for the admin to open the election."
-              : "This wallet is not yet registered for this election. Please provide your address to the election admin to be added."}
-          </p>
         </section>
       )}
 
