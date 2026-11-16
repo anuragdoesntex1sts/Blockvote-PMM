@@ -112,6 +112,9 @@ export default function VoterApp() {
         setRegistered(false);
         setVoted(false);
         setBlockedInfo(null);
+        if (!numericId || numericId <= 0) {
+          setStatus("⚠️ No active election contract loaded. Open the link with ?appId=<id> provided by the election admin.");
+        }
         return false;
       }
 
