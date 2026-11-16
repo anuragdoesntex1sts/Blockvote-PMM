@@ -240,19 +240,41 @@ export default function App() {
     };
   }, [appId, attach, refresh]);
 
+  const connectWithTimeout = (timeoutMs = 30000) => {
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new Error(
+            "Pera Wallet connection timed out. If using Brave or an Ad Blocker, please disable shields for this site. If using the Pera extension, click the Pera icon in your browser toolbar."
+          )
+        );
+      }, timeoutMs);
+    });
+
+    return Promise.race([peraWallet.connect(), timeoutPromise]).finally(() => {
+      clearTimeout(timer);
+    });
+  };
+
   const connect = useCallback(async () => {
     setBusy(true);
+    setStatus("Connecting to Pera Wallet… Check for modal, popups, or extension prompts.");
     try {
-      const accounts = await peraWallet.connect();
+      const accounts = await connectWithTimeout(30000);
       setAccountsList(accounts);
       if (accounts && accounts.length > 0) {
         await attach(accounts[0]);
       }
     } catch (e) {
+      console.warn("Pera connect error:", e);
       if (e?.data?.type === "CONNECT_MODAL_CLOSED") {
         setStatus("Wallet connection cancelled in Pera.");
       } else {
-        setStatus(e?.message ?? "Could not connect to Pera Wallet.");
+        setStatus(
+          e?.message ||
+            "Could not connect to Pera Wallet. Check popup blockers or disable Brave Shields / ad blockers for this domain."
+        );
       }
     } finally {
       setBusy(false);
@@ -525,7 +547,14 @@ export default function App() {
               </button>
             </>
           ) : (
-            <button className="outline" onClick={connect} disabled={busy}>Connect Pera</button>
+            <button
+              className="outline"
+              onClick={busy ? () => setBusy(false) : connect}
+              style={{ borderColor: "rgba(124, 93, 250, 0.5)", color: "#c3b4ff" }}
+              title={busy ? "Click to cancel stuck connection" : "Connect Pera Wallet"}
+            >
+              {busy ? "Connecting… (Cancel)" : "Connect Pera"}
+            </button>
           )}
         </div>
       </nav>
@@ -535,8 +564,14 @@ export default function App() {
         <h1>Every vote.<br /><em>On the chain.</em></h1>
         <p>A decentralized voting prototype powered by an Algorand TypeScript smart contract.</p>
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "15px" }}>
-          <button onClick={account ? disconnect : connect} disabled={busy}>
-            {account ? `Connected: ${short(account)} ↗` : "Connect Pera Wallet ↗"}
+          <button
+            onClick={busy ? () => setBusy(false) : account ? disconnect : connect}
+          >
+            {busy
+              ? "Connecting… (Click to Cancel)"
+              : account
+                ? `Connected: ${short(account)} ↗`
+                : "Connect Pera Wallet ↗"}
           </button>
           <a
             href="/deploy.html"

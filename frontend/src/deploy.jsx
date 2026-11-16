@@ -34,16 +34,37 @@ export default function Deploy() {
       .catch(() => {});
   }, []);
 
+  const connectWithTimeout = (timeoutMs = 30000) => {
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new Error(
+            "Pera Wallet connection timed out. If using Brave or an Ad Blocker, please disable shields for this site. If using the Pera extension, click the Pera icon in your browser toolbar."
+          )
+        );
+      }, timeoutMs);
+    });
+
+    return Promise.race([peraWallet.connect(), timeoutPromise]).finally(() => {
+      clearTimeout(timer);
+    });
+  };
+
   async function connect() {
     try {
-      const accounts = await peraWallet.connect();
+      setBusy(true);
+      note("Opening Pera Wallet connection… Check for popup or extension prompt.");
+      const accounts = await connectWithTimeout(30000);
       setAccount(accounts[0]);
     } catch (e) {
       note(
         e?.data?.type === "CONNECT_MODAL_CLOSED"
           ? "Connection cancelled."
-          : e?.message ?? "Could not connect."
+          : e?.message || "Could not connect to Pera Wallet."
       );
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -223,7 +244,11 @@ export default function Deploy() {
             "Connect Pera Wallet on Testnet before deploying."
           )}
         </p>
-        {!account && <button onClick={connect}>Connect Pera Wallet</button>}
+        {!account && (
+          <button onClick={busy ? () => setBusy(false) : connect}>
+            {busy ? "Connecting… (Click to Cancel)" : "Connect Pera Wallet"}
+          </button>
+        )}
       </section>
 
       <section className="panel admin">

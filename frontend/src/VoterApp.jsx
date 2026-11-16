@@ -268,6 +268,23 @@ export default function VoterApp() {
     return () => clearInterval(timer);
   }, [appId]);
 
+  const connectWithTimeout = (timeoutMs = 30000) => {
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new Error(
+            "Pera Wallet connection timed out. If using Brave or an Ad Blocker, please disable shields for this site. If using the Pera extension, click the Pera icon in your browser toolbar."
+          )
+        );
+      }, timeoutMs);
+    });
+
+    return Promise.race([peraWallet.connect(), timeoutPromise]).finally(() => {
+      clearTimeout(timer);
+    });
+  };
+
   const connect = useCallback(async () => {
     if (ended) {
       setStatus("Election closed: Voting has ended. Wallet connection is disabled.");
@@ -276,8 +293,9 @@ export default function VoterApp() {
 
     setBusy(true);
     setBlockedInfo(null);
+    setStatus("Connecting to Pera Wallet… Check for modal, popups, or extension prompts.");
     try {
-      const accounts = await peraWallet.connect();
+      const accounts = await connectWithTimeout(30000);
       setAccountsList(accounts);
       if (accounts && accounts.length > 0) {
         let chosen = accounts[0];
@@ -294,10 +312,14 @@ export default function VoterApp() {
         await validateAndAttach(chosen, admin, ended);
       }
     } catch (e) {
+      console.warn("Pera connect error:", e);
       if (e?.data?.type === "CONNECT_MODAL_CLOSED") {
         setStatus("Wallet connection cancelled in Pera.");
       } else {
-        setStatus(e?.message ?? "Could not connect to Pera Wallet.");
+        setStatus(
+          e?.message ||
+            "Could not connect to Pera Wallet. Check popup blockers or disable Brave Shields / ad blockers for this domain."
+        );
       }
     } finally {
       setBusy(false);
@@ -452,8 +474,14 @@ export default function VoterApp() {
               </button>
             </>
           ) : (
-            <button className="outline" onClick={connect} disabled={busy || ended} style={{ borderColor: "rgba(124, 93, 250, 0.5)", color: "#c3b4ff" }}>
-              {ended ? "Election Closed" : "Connect Voter Wallet"}
+            <button
+              className="outline"
+              onClick={busy ? () => setBusy(false) : connect}
+              disabled={ended}
+              style={{ borderColor: "rgba(124, 93, 250, 0.5)", color: "#c3b4ff" }}
+              title={busy ? "Click to cancel stuck connection" : "Connect Voter Wallet"}
+            >
+              {ended ? "Election Closed" : busy ? "Connecting… (Cancel)" : "Connect Voter Wallet"}
             </button>
           )}
         </div>
@@ -468,8 +496,17 @@ export default function VoterApp() {
         </p>
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "22px", alignItems: "center" }}>
-          <button onClick={account ? disconnect : connect} disabled={busy || ended}>
-            {ended ? "Election Closed" : account ? `Connected: ${short(account)}` : "Connect Voter Wallet ↗"}
+          <button
+            onClick={busy ? () => setBusy(false) : account ? disconnect : connect}
+            disabled={ended}
+          >
+            {ended
+              ? "Election Closed"
+              : busy
+                ? "Connecting… (Click to Cancel)"
+                : account
+                  ? `Connected: ${short(account)}`
+                  : "Connect Voter Wallet ↗"}
           </button>
         </div>
       </header>
