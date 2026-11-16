@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: blockvote
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: true
+    routes:
+      - type: rewrite
+        source: /vote
+        destination: /vote.html
+      - type: rewrite
+        source: /deploy
+        destination: /deploy.html
