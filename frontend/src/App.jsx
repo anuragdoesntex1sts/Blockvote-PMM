@@ -481,7 +481,18 @@ export default function App() {
 
   const total = candidates.reduce((sum, c) => sum + c.votes, 0);
   const maxVotes = Math.max(...candidates.map((x) => x.votes), 0);
-  const winner = ended && total > 0 ? candidates.find((c) => c.votes === maxVotes) : null;
+  const topCandidates =
+    ended && total > 0 && maxVotes > 0 ? candidates.filter((c) => c.votes === maxVotes) : [];
+  const isTie = topCandidates.length > 1;
+  const winner = topCandidates.length === 1 ? topCandidates[0] : null;
+
+  const formatNames = (list) => {
+    if (!list || list.length === 0) return "";
+    if (list.length === 1) return list[0].name;
+    if (list.length === 2) return `${list[0].name} and ${list[1].name}`;
+    return `${list.slice(0, -1).map((c) => c.name).join(", ")}, and ${list[list.length - 1].name}`;
+  };
+
   const short = (addr) => (addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "");
 
   return (
@@ -696,9 +707,13 @@ export default function App() {
           </div>
           <p style={{ marginTop: "6px", color: "#d6d0ff" }}>
             This election has permanently closed. Total votes cast: <b>{total}</b>.
-            {winner && (
-              <span> Winning candidate: <strong style={{ color: "#79f2c3" }}>{winner.name}</strong> with {winner.votes} vote{winner.votes === 1 ? "" : "s"}.</span>
-            )}
+            {total === 0 ? (
+              <span> No votes were cast in this election.</span>
+            ) : isTie ? (
+              <span> Result: <strong style={{ color: "#fbbf24" }}>🤝 Tie between {formatNames(topCandidates)}</strong> with <strong>{maxVotes}</strong> vote{maxVotes === 1 ? "" : "s"} each ({total > 0 ? ((maxVotes / total) * 100).toFixed(1) : 0}% each).</span>
+            ) : winner ? (
+              <span> Winning candidate: <strong style={{ color: "#79f2c3" }}>🏆 {winner.name}</strong> with <strong>{winner.votes}</strong> vote{winner.votes === 1 ? "" : "s"} ({total > 0 ? ((winner.votes / total) * 100).toFixed(1) : 0}% of total votes).</span>
+            ) : null}
           </p>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "14px", alignItems: "center" }}>
             <a
@@ -787,14 +802,47 @@ export default function App() {
         ) : (
           candidates.map((c, i) => {
             const pct = total > 0 ? ((c.votes / total) * 100).toFixed(1) : "0.0";
+            const isTop = ended && total > 0 && c.votes === maxVotes && maxVotes > 0;
             return (
-              <article className="panel candidate" key={c.id}>
-                <div className="avatar">{c.name[0]}</div>
-                <small>CANDIDATE 0{i + 1}</small>
+              <article
+                className="panel candidate"
+                key={c.id}
+                style={
+                  isTop
+                    ? {
+                        borderColor: isTie ? "rgba(245, 158, 11, 0.6)" : "rgba(16, 185, 129, 0.6)",
+                        boxShadow: isTie
+                          ? "0 0 20px rgba(245, 158, 11, 0.15)"
+                          : "0 0 20px rgba(16, 185, 129, 0.15)",
+                      }
+                    : undefined
+                }
+              >
+                <div className="avatar" style={isTop ? { border: isTie ? "2px solid #fbbf24" : "2px solid #10b981" } : undefined}>
+                  {c.name[0]}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <small>CANDIDATE 0{i + 1}</small>
+                  {isTop && (
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        background: isTie ? "rgba(245, 158, 11, 0.2)" : "rgba(16, 185, 129, 0.2)",
+                        color: isTie ? "#fbbf24" : "#10b981",
+                        fontFamily: "DM Mono",
+                      }}
+                    >
+                      {isTie ? "TIED 🤝" : "WINNER 🏆"}
+                    </span>
+                  )}
+                </div>
                 <h3>{c.name}</h3>
                 <b>{c.votes} <small>vote{c.votes === 1 ? "" : "s"}</small></b>
                 <div style={{ marginTop: "12px", width: "100%", background: "rgba(255,255,255,0.08)", borderRadius: "999px", height: "6px", overflow: "hidden" }}>
-                  <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #7c5dfa, #a78bfa)", borderRadius: "999px" }} />
+                  <div style={{ width: `${pct}%`, height: "100%", background: isTop ? (isTie ? "linear-gradient(90deg, #f59e0b, #fbbf24)" : "linear-gradient(90deg, #10b981, #34d399)") : "linear-gradient(90deg, #7c5dfa, #a78bfa)", borderRadius: "999px" }} />
                 </div>
                 <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "6px", fontFamily: "DM Mono" }}>
                   {pct}% of total votes
@@ -824,11 +872,26 @@ export default function App() {
             ))
           )}
           {configured && ended && (
-            <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #795be5" }}>
-              <b style={{ color: "#79f2c3" }}>🏆 Winner: {winner ? winner.name : "No votes cast"}</b>
-              {winner && (
-                <p style={{ margin: "8px 0" }}>Winning votes: <strong>{winner.votes}</strong> out of {total} total votes</p>
-              )}
+            <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid rgba(124, 93, 250, 0.3)" }}>
+              {total === 0 ? (
+                <b style={{ color: "#94a3b8" }}>No votes cast in this election.</b>
+              ) : isTie ? (
+                <>
+                  <b style={{ color: "#fbbf24", fontSize: "14px" }}>
+                    🤝 Result: Tie between {formatNames(topCandidates)}
+                  </b>
+                  <p style={{ margin: "6px 0 0 0", color: "#cbd5e1", fontSize: "13px" }}>
+                    Tied with <strong>{maxVotes}</strong> vote{maxVotes === 1 ? "" : "s"} each ({total > 0 ? ((maxVotes / total) * 100).toFixed(1) : 0}% each). No single winner.
+                  </p>
+                </>
+              ) : winner ? (
+                <>
+                  <b style={{ color: "#79f2c3", fontSize: "14px" }}>🏆 Certified Winner: {winner.name}</b>
+                  <p style={{ margin: "6px 0 0 0", color: "#cbd5e1", fontSize: "13px" }}>
+                    Won with <strong>{winner.votes}</strong> out of {total} total votes ({total > 0 ? ((winner.votes / total) * 100).toFixed(1) : 0}%).
+                  </p>
+                </>
+              ) : null}
             </div>
           )}
         </div>
