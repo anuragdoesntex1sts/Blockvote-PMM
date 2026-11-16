@@ -167,6 +167,8 @@ export default function Deploy() {
       setAppId(appIdStr);
       try {
         localStorage.setItem("blockvote_app_id", appIdStr);
+        sessionStorage.setItem("blockvote_app_id", appIdStr);
+        sessionStorage.setItem("blockvote_admin_session_active", appIdStr);
       } catch {
         /* ignore localStorage quota/privacy exceptions */
       }
@@ -261,7 +263,7 @@ export default function Deploy() {
               Open Voter Portal →
             </a>
             <a
-              href="/"
+              href={`/index.html?appId=${appId}`}
               style={{
                 display: "inline-block",
                 padding: "12px 24px",

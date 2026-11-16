@@ -8,7 +8,7 @@ import {
   getCandidates,
   getVoterStatus,
 } from "./algorand";
-import { VOTING_APP_ID, EXPLORER_APP } from "./config";
+import { VOTING_APP_ID } from "./config";
 
 function getActiveAppId() {
   try {

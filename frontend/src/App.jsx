@@ -12,19 +12,46 @@ import { VOTING_APP_ID, EXPLORER_APP } from "./config";
 
 function getActiveAppId() {
   try {
+    // 1. Explicit query parameter takes highest priority (?appId=... or ?app=...)
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("appId") || params.get("app");
+    if (fromUrl && /^\d+$/.test(fromUrl.trim()) && fromUrl.trim() !== "0") {
+      return BigInt(fromUrl.trim());
+    }
+
+    // 2. Active browser session storage
+    const fromSession = sessionStorage.getItem("blockvote_app_id");
+    if (fromSession && /^\d+$/.test(fromSession.trim()) && fromSession.trim() !== "0") {
+      return BigInt(fromSession.trim());
+    }
+
+    // 3. Persistent localStorage only if NOT marked as concluded
     const saved = localStorage.getItem("blockvote_app_id");
-    if (saved && /^\d+$/.test(saved.trim())) {
-      return BigInt(saved.trim());
+    if (saved && /^\d+$/.test(saved.trim()) && saved.trim() !== "0") {
+      const isConcluded = localStorage.getItem(`blockvote_concluded_${saved.trim()}`) === "true";
+      if (!isConcluded) {
+        return BigInt(saved.trim());
+      }
     }
   } catch {
     /* fallback to config */
   }
-  return VOTING_APP_ID;
+  return VOTING_APP_ID || 0n;
 }
 
 export default function App() {
   const [appId, setAppId] = useState(getActiveAppId);
-  const [appInput, setAppInput] = useState(String(getActiveAppId()));
+  const [appInput, setAppInput] = useState(() => {
+    const initId = getActiveAppId();
+    return initId > 0n ? String(initId) : "";
+  });
+  const [lastConcludedId, setLastConcludedId] = useState(() => {
+    try {
+      return localStorage.getItem("blockvote_last_concluded_app_id") || "";
+    } catch {
+      return "";
+    }
+  });
   const [account, setAccount] = useState("");
   const [accountsList, setAccountsList] = useState([]);
   const [admin, setAdmin] = useState("");
@@ -46,11 +73,17 @@ export default function App() {
 
   // ── Load on-chain state directly from algod ──────────────────────────
   const refresh = useCallback(
-    async (targetAppId, userAddress) => {
+    async (targetAppId, userAddress, isExplicit = false) => {
       const numericId = Number(targetAppId);
       if (!numericId || numericId <= 0) {
-        setStatus("No application ID configured. Deploy to Testnet to get started.");
-        return;
+        setAdmin("");
+        setStarted(false);
+        setEnded(false);
+        setCandidates([]);
+        setRegistered(false);
+        setVoted(false);
+        setStatus("No active election loaded. Deploy a new election or enter an App ID to begin.");
+        return null;
       }
 
       try {
@@ -58,7 +91,44 @@ export default function App() {
         const appState = await getAppState(numericId);
         if (!appState) {
           setStatus(`Application #${numericId} not found on Algorand Testnet.`);
-          return;
+          return null;
+        }
+
+        const hasExplicitUrl = Boolean(new URLSearchParams(window.location.search).get("appId"));
+        const sessionActive = sessionStorage.getItem("blockvote_admin_session_active") === String(numericId);
+
+        // If this election is already concluded
+        if (appState.ended) {
+          try {
+            localStorage.setItem(`blockvote_concluded_${numericId}`, "true");
+            localStorage.setItem("blockvote_last_concluded_app_id", String(numericId));
+            localStorage.removeItem("blockvote_app_id");
+            sessionStorage.removeItem("blockvote_app_id");
+          } catch {
+            /* ignore */
+          }
+          setLastConcludedId(String(numericId));
+
+          // If opening a new session and this ended election was not explicitly requested by user:
+          if (!isExplicit && !hasExplicitUrl && !sessionActive) {
+            setAppId(0n);
+            setAppInput("");
+            setAdmin("");
+            setStarted(false);
+            setEnded(false);
+            setCandidates([]);
+            setRegistered(false);
+            setVoted(false);
+            setStatus(`Previous election #${numericId} has concluded. Started a fresh admin session.`);
+            return null;
+          }
+        } else {
+          // Election is active (open or not started)
+          try {
+            sessionStorage.setItem("blockvote_admin_session_active", String(numericId));
+          } catch {
+            /* ignore */
+          }
         }
 
         setAdmin(appState.admin);
@@ -90,9 +160,11 @@ export default function App() {
         } else {
           setStatus(`Election #${numericId} is NOT STARTED yet. Admin can register voters and start.`);
         }
+        return appState;
       } catch (err) {
         console.error("Failed to load on-chain state:", err);
         setStatus(`Error querying app #${numericId}: ${err?.message ?? String(err)}`);
+        return null;
       }
     },
     [],
@@ -100,20 +172,43 @@ export default function App() {
 
   // Switch or reload active App ID
   const handleSwitchAppId = (newIdStr) => {
-    const clean = newIdStr.trim();
+    const clean = (newIdStr || "").trim();
     if (!/^\d+$/.test(clean) || clean === "0") {
       setStatus("Please enter a valid numeric Algorand application ID.");
       return;
     }
     const newBigInt = BigInt(clean);
     setAppId(newBigInt);
+    setAppInput(clean);
     try {
       localStorage.setItem("blockvote_app_id", clean);
+      sessionStorage.setItem("blockvote_app_id", clean);
+      sessionStorage.setItem("blockvote_admin_session_active", clean);
     } catch {
       /* ignore storage quota */
     }
-    refresh(newBigInt, account);
+    refresh(newBigInt, account, true);
   };
+
+  // Start fresh admin session (clear any old election from active view)
+  const handleStartNewSession = useCallback(() => {
+    try {
+      localStorage.removeItem("blockvote_app_id");
+      sessionStorage.removeItem("blockvote_app_id");
+      sessionStorage.removeItem("blockvote_admin_session_active");
+    } catch {
+      /* ignore */
+    }
+    setAppId(0n);
+    setAppInput("");
+    setAdmin("");
+    setCandidates([]);
+    setStarted(false);
+    setEnded(false);
+    setRegistered(false);
+    setVoted(false);
+    setStatus("Started a new admin session. Deploy a new election or enter an App ID to begin.");
+  }, []);
 
   const attach = useCallback(
     async (address) => {
@@ -258,7 +353,16 @@ export default function App() {
 
       await signSendWait(txn);
       setStatus("✓ Election closed successfully. Voting is now sealed permanently.");
-      await refresh(appId, account);
+      try {
+        localStorage.setItem(`blockvote_concluded_${appId}`, "true");
+        localStorage.setItem("blockvote_last_concluded_app_id", appId.toString());
+        localStorage.removeItem("blockvote_app_id");
+        sessionStorage.removeItem("blockvote_app_id");
+      } catch {
+        /* ignore */
+      }
+      setLastConcludedId(appId.toString());
+      await refresh(appId, account, true);
     } catch (e) {
       console.error("End election failed:", e);
       const msg = e?.response?.body?.message ?? e?.message ?? String(e);
@@ -497,42 +601,71 @@ export default function App() {
       <section className="panel" style={{ padding: "14px 20px", marginBottom: "20px", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <span style={{ fontSize: "12px", fontFamily: "DM Mono", color: "#9398ad" }}>ACTIVE CONTRACT:</span>
-          <b style={{ color: "#c3b4ff", fontFamily: "DM Mono" }}>#{appId.toString()}</b>
+          <b style={{ color: configured ? "#c3b4ff" : "#94a3b8", fontFamily: "DM Mono" }}>
+            {configured ? `#${appId.toString()}` : "None (Fresh Session)"}
+          </b>
           {configured && (
             <a href={EXPLORER_APP(appId.toString())} target="_blank" rel="noreferrer" style={{ fontSize: "12px", color: "#a99bf0" }}>
               Explorer ↗
             </a>
           )}
+          {lastConcludedId && !configured && (
+            <span style={{ fontSize: "11px", color: "#8a8f9d", fontFamily: "DM Mono" }}>
+              Last Concluded: #{lastConcludedId} (
+              <button
+                type="button"
+                onClick={() => handleSwitchAppId(lastConcludedId)}
+                style={{ background: "none", border: "none", color: "#a78bfa", cursor: "pointer", padding: 0, textDecoration: "underline", fontSize: "11px" }}
+              >
+                Review Archive
+              </button>
+              )
+            </span>
+          )}
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
           <input
             value={appInput}
             onChange={(e) => setAppInput(e.target.value)}
-            placeholder="App ID"
+            placeholder="Enter App ID"
             style={{ padding: "6px 10px", background: "#0e1424", border: "1px solid #ffffff2b", borderRadius: "6px", color: "white", width: "130px", fontSize: "12px" }}
           />
           <button
             className="outline"
             style={{ padding: "6px 12px", fontSize: "12px" }}
             onClick={() => handleSwitchAppId(appInput)}
-            disabled={busy}
+            disabled={busy || !appInput.trim()}
           >
             Load App
           </button>
+          {configured && (
+            <button
+              className="outline"
+              style={{ padding: "6px 12px", fontSize: "12px", borderColor: "rgba(255,255,255,0.15)" }}
+              onClick={handleStartNewSession}
+              disabled={busy}
+              title="Clear active election and start a fresh session"
+            >
+              New Session
+            </button>
+          )}
         </div>
       </section>
 
       {/* ── Election Ended Alert ── */}
       {ended && (
         <div className="notice" style={{ borderColor: "#a99bf0", background: "#1c183a", marginBottom: "25px", padding: "18px" }}>
-          <b style={{ fontSize: "15px", color: "#c4b6ff" }}>Election Concluded</b>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+            <b style={{ fontSize: "15px", color: "#c4b6ff" }}>Election Concluded</b>
+            <span style={{ fontSize: "12px", color: "#a5a8b9", fontFamily: "DM Mono" }}>Contract #{appId.toString()}</span>
+          </div>
           <p style={{ marginTop: "6px", color: "#d6d0ff" }}>
             This election has permanently closed. Total votes cast: <b>{total}</b>.
             {winner && (
               <span> Winning candidate: <strong style={{ color: "#79f2c3" }}>{winner.name}</strong> with {winner.votes} vote{winner.votes === 1 ? "" : "s"}.</span>
             )}
           </p>
-          <p style={{ marginTop: "12px" }}>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "14px", alignItems: "center" }}>
             <a
               href="/deploy.html"
               style={{
@@ -548,18 +681,25 @@ export default function App() {
             >
               Deploy a fresh election to test voting →
             </a>
-          </p>
+            <button
+              className="outline"
+              onClick={handleStartNewSession}
+              style={{ fontSize: "13px", padding: "8px 16px" }}
+            >
+              Start Fresh Admin Session (Clear Screen)
+            </button>
+          </div>
         </div>
       )}
 
       {/* ── Stats ── */}
       <section className="stats">
-        <div><small>TOTAL VOTES</small><b>{total}</b></div>
-        <div><small>CANDIDATES</small><b>{candidates.length || "—"}</b></div>
+        <div><small>TOTAL VOTES</small><b>{configured ? total : "—"}</b></div>
+        <div><small>CANDIDATES</small><b>{configured ? candidates.length || "—" : "—"}</b></div>
         <div>
           <small>ELECTION STATUS</small>
-          <b className="smallb" style={{ color: ended ? "#e06c75" : started ? "#79f2c3" : "#e5c07b" }}>
-            {ended ? "Ended (Closed)" : started ? "Open (Live)" : "Not started"}
+          <b className="smallb" style={{ color: !configured ? "#94a3b8" : ended ? "#e06c75" : started ? "#79f2c3" : "#e5c07b" }}>
+            {!configured ? "No Active Election" : ended ? "Ended (Closed)" : started ? "Open (Live)" : "Not started"}
           </b>
         </div>
       </section>
@@ -568,7 +708,30 @@ export default function App() {
       <div className="heading"><div className="tag">ELECTION CANDIDATES</div><h2>Candidate Standings</h2></div>
 
       <section className="cards">
-        {candidates.length === 0 ? (
+        {!configured ? (
+          <div className="panel" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px" }}>
+            <p style={{ fontSize: "15px", marginBottom: "10px", color: "#cbd5e1" }}>
+              No active election contract loaded in this session.
+            </p>
+            <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "20px", maxWidth: "520px", margin: "0 auto 20px", lineHeight: "1.6" }}>
+              Ready for a fresh election! Deploy a new contract to Algorand Testnet to set up candidates and start voting, or enter an App ID above to inspect an active election.
+            </p>
+            <a
+              href="/deploy.html"
+              style={{
+                display: "inline-block",
+                padding: "10px 20px",
+                background: "linear-gradient(110deg,#9275fa,#6046d0)",
+                color: "white",
+                borderRadius: "8px",
+                textDecoration: "none",
+                fontWeight: 700,
+              }}
+            >
+              + Deploy New Election Contract →
+            </a>
+          </div>
+        ) : candidates.length === 0 ? (
           <div className="panel" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px" }}>
             <p style={{ fontSize: "15px", marginBottom: "15px" }}>No candidate boxes found on Contract #{appId.toString()}.</p>
             <a
@@ -612,7 +775,9 @@ export default function App() {
         <div className="panel">
           <div className="tag">LIVE TALLY</div>
           <h2>Election results</h2>
-          {candidates.length === 0 ? (
+          {!configured ? (
+            <p style={{ color: "#8a8f9d" }}>No active election loaded in this session.</p>
+          ) : candidates.length === 0 ? (
             <p style={{ color: "#8a8f9d" }}>No candidate data available.</p>
           ) : (
             candidates.map((c) => (
@@ -623,7 +788,7 @@ export default function App() {
               </div>
             ))
           )}
-          {ended && (
+          {configured && ended && (
             <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #795be5" }}>
               <b style={{ color: "#79f2c3" }}>🏆 Winner: {winner ? winner.name : "No votes cast"}</b>
               {winner && (
@@ -647,16 +812,16 @@ export default function App() {
           <p>
             Registered to vote:{" "}
             <b>
-              {account ? (registered ? "Yes ✓" : "No (Register below)") : "Connect wallet"}
+              {!configured ? "—" : account ? (registered ? "Yes ✓" : "No (Register below)") : "Connect wallet"}
             </b>
           </p>
           <p>
             Has voted:{" "}
             <b>
-              {account ? (voted ? "Yes ✓" : "No") : "Connect wallet"}
+              {!configured ? "—" : account ? (voted ? "Yes ✓" : "No") : "Connect wallet"}
             </b>
           </p>
-          <p>Election Admin: <b>{admin ? (isAdmin ? `${short(admin)} (You)` : short(admin)) : "—"}</b></p>
+          <p>Election Admin: <b>{configured && admin ? (isAdmin ? `${short(admin)} (You)` : short(admin)) : "—"}</b></p>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
             <button className="outline" disabled={busy} onClick={() => refresh(appId, account)}>
               Refresh on-chain state
